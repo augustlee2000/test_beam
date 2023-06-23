@@ -5,6 +5,7 @@ from math import pi, sqrt, exp, cos, log
 import matplotlib.pyplot as plt
 from scipy import signal
 from scipy.stats import moyal
+from scipy.integrate import quad
 
 from matplotlib.widgets import Slider, Button, TextBox
 %matplotlib widget
@@ -82,13 +83,14 @@ def update(val):
     time_array_new = time_array - x_shift
     
     x1 = landau_array_creator(time_array_new)/integral_full
-    
     x2 = threshold_calc(time_array,threshold)
     axs[1].lines[0].set_ydata(y1)
     axs[2].lines[0].set_ydata(y2)
     axs[0].lines[0].set_ydata(x1)
     axs[0].lines[1].set_ydata(x2)
     t1.set_text("The Total Percentage of Electrons seen by the Trigger: " + str(round(integral_calculator(time_array,x1, y1, spacing),4)))
+    text_string = latency_finder(time_array, x1,tdc_array, threshold, phase)
+    t2.set_text(text_string)
     fig.canvas.draw_idle()
 
 # Resets the sliders
@@ -97,21 +99,45 @@ def reset(event):
     pos_slider.reset()
     thresh_slider.reset()
 
+def latency_finder(time_array_new, landau_array, tdc_array, threshold, phase):
+    text_string = ""
+    text_string += "\n"
+    phase_integer = phase //3.125
+    for i in range(len(tdc_array)):
+        latency = 0
+        landau_val = 0.0
+        while latency < 6:
+            timer_position = tdc_array[i] * 3.125 + latency *25 + phase_integer *3.125 
+            index = np.where(time_array_new == timer_position)
+            landau_val = landau_array[index[0]]
+            if landau_val <= threshold:
+                latency +=1
+                continue
+            else:
+                break
+                
+        text_string +="TDC: "
+        text_string += str(tdc_array[i])
+        text_string +=" Has a latency of "
+        text_string += str(5-latency)
+        text_string += "\n"
+    return text_string
+    
 
 #making the time array     
-N = 500
+N = 481
 time_end = 150
 time_array = np.linspace(0, time_end, N)
 
 spacing = time_end/N
 
 #all of our inital conditions
-frequency_timer = .025
+frequency_timer = .040
 frequency_tdc = frequency_timer * 8
 phase_timer = 0
 phase_tdc = 0
-landau_x_shift = 5
-threshold_int = .025
+landau_x_shift = 10
+threshold_int = .01
 
 #controls the landau distribution
 c = 10
@@ -124,12 +150,13 @@ squarewave_tdc = squarewave(time_array,frequency_tdc,phase_timer)
 
 
 #makes the landau distrubutino
-landau_array = landau_array_creator(time_array)
+landau_array = landau_array_creator(time_array - landau_x_shift)
 
 #find the integral of the landau distrubution and normalized
 integral_full = integral_calculator_super_lazy(time_array, landau_array, spacing)
                    
 landau_array  = landau_array/integral_full
+
 
 #makes the threshhold
 threshold_array = threshold_calc(time_array, threshold_int)
@@ -145,10 +172,17 @@ axs[2].plot(time_array, squarewave_tdc, 'tab:green', label = "TDC")
 plt.xlabel("Time (ns)")
 fig.legend()
 
-fig.subplots_adjust(left=.20, bottom=0.22)
+fig.subplots_adjust(left=.20, bottom=0.37)
+
+#This part is going to be about find the latency
+
+tdc_array = np.linspace(0,7,8)
+    
+text_string =latency_finder(time_array, landau_array, tdc_array, threshold_int, phase_timer)
+
 
 #makes the three slider that we want in the program
-axfreq = fig.add_axes([0.25, 0.05, 0.65, 0.03])
+axfreq = fig.add_axes([0.25, 0.04, 0.65, 0.02])
 phase_slider = Slider(
     ax=axfreq,
     label='Phase Shift',
@@ -157,7 +191,7 @@ phase_slider = Slider(
     valinit=phase_timer,
 )
 
-axpos = fig.add_axes([0.25, 0.01, 0.65, 0.03])
+axpos = fig.add_axes([0.25, 0.01, 0.65, 0.02])
 pos_slider = Slider(
     ax=axpos,
     label='Position of Distrubution',
@@ -167,17 +201,19 @@ pos_slider = Slider(
 )
 
 
-axthresh = fig.add_axes([0.25, 0.09, 0.65, 0.03])
+axthresh = fig.add_axes([0.25, 0.07, 0.65, 0.02])
 thresh_slider = Slider(
     ax=axthresh,
     label='Threshold',
-    valmin=0.01,
-    valmax=.03,
+    valmin=0.001,
+    valmax=.025,
     valinit=threshold_int,
 )
 
 
 t1 = fig.text(.05, .90,  "The Total Percentage of Electrons seen by the Trigger: " +str(round(integral_calculator(time_array,landau_array, squarewave_timer, spacing),4)))
+
+t2 = fig.text(.40,.085, text_string)
 
 #updates the sliders
 phase_slider.on_changed(update)
@@ -191,3 +227,4 @@ button = Button(resetax, 'Reset', hovercolor='0.975')
 button.on_clicked(reset)
 
 plt.show()
+print("If Latency is -1 then that TDC Value never found a value above threshold")
