@@ -1,3 +1,67 @@
+import datetime
+then = datetime.datetime.now()
+print ("Start date and time: ", then.strftime("%Y-%m-%d %H:%M:%S"))
+
+#!/usr/bin/env python
+from exampleModule import *
+#from PhysicsTools.NanoAODTools.postprocessing.modules.jme.jetmetHelperRun2 import *
+#from PhysicsTools.NanoAODTools.postprocessing.modules.jme.jetmetUncertainties import *
+from PhysicsTools.NanoAODTools.postprocessing.framework.postprocessor import PostProcessor
+from importlib import import_module
+import os
+import sys
+import ROOT
+import numpy as np
+ROOT.PyConfig.IgnoreCommandLineOptions = True
+
+
+
+def MakeHist(N,colors,names,title,x_axis,y_axis,high,low,bins):
+    hist = []
+    for i in range(N):
+        hists = ROOT.TH1F(names[i],title,bins,low,high)
+        hists.SetLineColor(colors[i])
+        #hists.SetFillColor(colors[i])
+        hists.GetXaxis().SetTitle(x_axis)
+        hists.GetYaxis().SetTitle(y_axis)
+        hist.append(hists)
+    return hist
+
+
+def CMSLabel(x,y,color,name):
+    l = ROOT.TLatex()
+    l.SetNDC()
+    l.SetTextFont(72)
+    l.SetTextColor(ROOT.kBlack)
+    l.DrawLatex(x,y,"CMS")
+
+
+    delx = (0.115*496*ROOT.gPad.GetWh())/(472*ROOT.gPad.GetWw()) #696
+
+    t =ROOT.TLatex()
+    t.SetNDC()
+    t.SetTextFont(42)
+    t.SetTextColor(ROOT.kBlack)
+    t.DrawLatex(x+delx,y,name)
+
+
+
+def HistNorm(hist):
+    integral = hist.Integral()
+    hist.Scale(1./integral)
+
+
+def Label(x,y,name):
+    l = ROOT.TLatex()
+    l.SetNDC()
+    l.SetTextFont(42)
+    l.SetTextSize(0.03)
+    l.SetTextColor(ROOT.kBlack)
+    l.DrawLatex(x,y,name)
+
+def legends(hists):
+    print("name = ",hists.GetName())
+    hists_legend.AddEntry(hists,hists.GetName(),"lp")
 
 
 from array import array
